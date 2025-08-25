@@ -1,0 +1,97 @@
+#!/bin/zsh
+
+REALM="HOME.TICKELL.US"
+DOMAIN="home.tickell.us"
+file=$(mktemp)
+
+echo "Getting CA Cert"
+curl -kL http://ipa-ca.${DOMAIN}/ipa/config/ca.crt > ${file} 2>/dev/null
+sudo mkdir -p /etc/ipa
+sudo cp ${file} /etc/ipa/ca.crt
+sudo chmod 755 /etc/ipa
+sudo chmod 644 /etc/ipa/ca.crt
+
+echo "Create /etc/krb5.conf"
+cat > $file << END
+[domain_realm]
+	.${DOMAIN} = ${REALM}
+	${DOMAIN} = ${REALM}
+
+[libdefaults]
+	default_realm = ${REALM}
+	allow_weak_cryto = yes
+	dns_lookup_realm = true
+	dns_lookup_kdc = true
+	rdns = false
+	ticket_lifetime = 24h
+	forwardable = yes
+	renewable = true
+
+[realms]
+	${REALM} = {
+		pkinit_anchors = FILE:/etc/ipa/ca.crt
+	}
+END
+
+if [ -f "/etc/krb5.conf" ]; then
+	if [ ! -f /etc/krb5.conf.install ]; then
+		sudo cp /etc/krb5.conf /etc/krb5.conf.install
+	fi
+	sudo cp /etc/krb5.conf /etc/krb5.conf.orig
+fi
+
+sudo cp ${file} /etc/krb5.conf
+sudo chmod 644 /etc/krb5.conf
+
+# update PAM setup
+cat > ${file} << END
+# authorization: auth account
+auth	optional	pam_krb5.so use_first_pass use_kcminit default_principal
+auth	sufficient	pam_krb5.so use_first_pass default_principal
+auth	required	pam_opendirectory.so use_first_pass nullok
+account	required	pam_opendirectory.so
+END
+if [ ! -f /etc/pam.d/authorization.install ]; then
+	sudo cp /etc/pam.d/authorization /etc/pam.d/authorization.install
+fi
+sudo cp /etc/pam.d/authorization /etc/pam.d/authorization.orig
+sudo cp ${file} /etc/pam.d/authorization
+sudo chmod 644 /etc/pam.d/authorization
+
+cat > ${file} << END
+auth       optional       pam_krb5.so use_first_pass use_kcminit
+auth       optional       pam_krb5.so use_first_pass use_kcminit default_principal
+auth       sufficient     pam_krb5.so use_first_pass default_principal
+auth       required       pam_opendirectory.so use_first_pass nullok
+account    required       pam_opendirectory.so
+account    sufficient     pam_self.so
+account    required       pam_group.so no_warn group=admin,wheel fail_safe
+account    required       pam_group.so no_warn deny group=admin,wheel ruser fail_safe
+END
+if [ ! -f /etc/pam.d/screensaver.install ]; then
+        sudo cp /etc/pam.d/screensaver /etc/pam.d/screensaver.install
+fi
+sudo cp /etc/pam.d/screensaver /etc/pam.d/screensaver.orig
+sudo cp ${file} /etc/pam.d/screensaver
+sudo chmod 644 /etc/pam.d/screensaver
+
+cat > ${file} << END
+password   sufficient     pam_krb5.so
+auth       required       pam_permit.so
+account    required       pam_opendirectory.so
+password   required       pam_opendirectory.so
+session    required       pam_permit.so
+END
+if [ ! -f /etc/pam.d/passwd.install ]; then
+        sudo cp /etc/pam.d/passwd /etc/pam.d/passwd.install
+fi
+sudo cp /etc/pam.d/passwd /etc/pam.d/passwd.orig
+sudo cp ${file} /etc/pam.d/passwd
+sudo chmod 644 /etc/pam.d/passwd
+
+# update ssh client config
+echo "Update SSH client Configuration"
+cat /etc/ssh/ssh_config | sed -e '/GSSAPI/s/\# *//;/GSSAPI/s/ no/ yes/' > ${file}
+sudo cp /etc/ssh/ssh_config /etc/ssh/ssh_config.orig
+sudo cp ${file} /etc/ssh/ssh_config
+sudo chmod 644 /etc/ssh/ssh_config
