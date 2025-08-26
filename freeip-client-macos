@@ -2,7 +2,28 @@
 
 REALM="HOME.TICKELL.US"
 DOMAIN="home.tickell.us"
+[ -z "$ADMIN" ] && ADMIN="admin@$REALM"
 file=$(mktemp)
+
+# Check Creds
+test=$(klist -t)
+test=$?
+if [ "$test" -eq 0 ]; then
+	test=$(klist | grep Principal: | awk -F": " '{print $2}')
+fi
+if [ "$test" != "$ADMIN" ]; then
+	echo "You do not appear to have a ticket as $ADMIN - let's kinit"
+	kinit $ADMIN
+	test=$?
+	if [ "$test" -gt 0 ]; then
+		echo "Kinit failed.  Try again."
+		exit
+	fi
+fi
+
+
+## BEGIN False
+## if false; then
 
 echo "Getting CA Cert"
 curl -kL http://ipa-ca.${DOMAIN}/ipa/config/ca.crt > ${file} 2>/dev/null
@@ -11,9 +32,10 @@ sudo cp ${file} /etc/ipa/ca.crt
 sudo chmod 755 /etc/ipa
 sudo chmod 644 /etc/ipa/ca.crt
 
+
 echo "Create /etc/krb5.conf"
 cat > $file << END
-[domain_realm]
+[oomain_realm]
 	.${DOMAIN} = ${REALM}
 	${DOMAIN} = ${REALM}
 
@@ -33,13 +55,16 @@ cat > $file << END
 	}
 END
 
+if [ ! -f "/etc/krb5.conf.install" -a -f "/etc/krb5.conf" ]; then
+	cp /etc/krb5.conf /etc/krb5.conf.install
+fi
+
 if [ -f "/etc/krb5.conf" ]; then
 	if [ ! -f /etc/krb5.conf.install ]; then
 		sudo cp /etc/krb5.conf /etc/krb5.conf.install
 	fi
 	sudo cp /etc/krb5.conf /etc/krb5.conf.orig
 fi
-
 sudo cp ${file} /etc/krb5.conf
 sudo chmod 644 /etc/krb5.conf
 
@@ -54,9 +79,9 @@ END
 if [ ! -f /etc/pam.d/authorization.install ]; then
 	sudo cp /etc/pam.d/authorization /etc/pam.d/authorization.install
 fi
-sudo cp /etc/pam.d/authorization /etc/pam.d/authorization.orig
-sudo cp ${file} /etc/pam.d/authorization
-sudo chmod 644 /etc/pam.d/authorization
+#sudo cp /etc/pam.d/authorization /etc/pam.d/authorization.orig
+#sudo cp ${file} /etc/pam.d/authorization
+#sudo chmod 644 /etc/pam.d/authorization
 
 cat > ${file} << END
 auth       optional       pam_krb5.so use_first_pass use_kcminit
@@ -71,9 +96,9 @@ END
 if [ ! -f /etc/pam.d/screensaver.install ]; then
         sudo cp /etc/pam.d/screensaver /etc/pam.d/screensaver.install
 fi
-sudo cp /etc/pam.d/screensaver /etc/pam.d/screensaver.orig
-sudo cp ${file} /etc/pam.d/screensaver
-sudo chmod 644 /etc/pam.d/screensaver
+#sudo cp /etc/pam.d/screensaver /etc/pam.d/screensaver.orig
+#sudo cp ${file} /etc/pam.d/screensaver
+#sudo chmod 644 /etc/pam.d/screensaver
 
 cat > ${file} << END
 password   sufficient     pam_krb5.so
@@ -85,13 +110,100 @@ END
 if [ ! -f /etc/pam.d/passwd.install ]; then
         sudo cp /etc/pam.d/passwd /etc/pam.d/passwd.install
 fi
-sudo cp /etc/pam.d/passwd /etc/pam.d/passwd.orig
-sudo cp ${file} /etc/pam.d/passwd
-sudo chmod 644 /etc/pam.d/passwd
+#sudo cp /etc/pam.d/passwd /etc/pam.d/passwd.orig
+#sudo cp ${file} /etc/pam.d/passwd
+#sudo chmod 644 /etc/pam.d/passwd
 
 # update ssh client config
 echo "Update SSH client Configuration"
+if [ ! -f "/etc/ssh/ssh_config.install" ]; then
+	sudo cp /etc/ssh/ssh_config /etc/ssh/ssh_config.install
+fi
 cat /etc/ssh/ssh_config | sed -e '/GSSAPI/s/\# *//;/GSSAPI/s/ no/ yes/' > ${file}
+echo "VerifyHostKeyDNS yes" >> ${file}
 sudo cp /etc/ssh/ssh_config /etc/ssh/ssh_config.orig
 sudo cp ${file} /etc/ssh/ssh_config
 sudo chmod 644 /etc/ssh/ssh_config
+
+# END FALSE
+# fi
+
+# Checking (and setting if needed) hostname
+echo "Checking / Setting hostname"
+set_name=0
+current_hostname=$(scutil --get HostName)
+test=$?
+if [ "$test" -gt 0 ]; then
+	echo "Error: Name not set"
+	set_name=1
+fi
+test=$(echo $current_hostname | grep $DOMAIN)
+test=$?
+if [ "$test" -eq 1 ]; then
+	echo "Error: Name set but does not include $DOMAIN"
+	set_name=1
+else
+	HOSTNAME=$current_hostname
+fi
+
+if [ $set_name -eq 1 ]; then
+	echo "Hostname not set - Looking for ENV var HOSTNAME or input"
+	echo "In outer if"
+	while [ 1 ]; do
+		if [ ! -z "$HOSTNAME" ]; then
+			test=$(echo $HOSTNAME | grep $DOMAIN)
+			test=$?
+			if [ "$test" -eq 0 ]; then
+				break
+			else
+				echo "Entered hostname does not include $DOMAIN - try again."
+			fi
+		fi
+		echo -n "Enter fully qualified Hostname: "
+		read HOSTNAME
+	done
+	echo "Setting hostname to \"$HOSTNAME\""
+	sudo scutil --set HostName "$HOSTNAME"
+fi
+
+## get current ip address
+for int in $(ipconfig getiflist); do
+	addr=$(ipconfig getifaddr $int)
+	if [ ! -z "$addr" ]; then 
+		mac=$(ifconfig $int | grep ether | sed -e 's/^.*ether //')
+		break
+	fi
+done
+if [ -z "$addr" ]; then
+	echo "IP Address Could not be determined. Check host configuration.  Exit"
+	exit
+else 
+	echo "adding host with $HOSTNAME -> $addr"
+fi
+
+server=$(dig _kerberos-master._tcp.${DOMAIN}. SRV +short | head -1 | awk '{print $4}')
+
+echo "Accessing $server over SSH to setup client"
+user=$(echo $ADMIN | awk -F\@ '{print $1}')
+short_hostname=$(hostname -s)
+
+#ssh ${user}@${server} \
+#"ipa dnsrecord-add ${DOMAIN} ${short_hostname} --a-ip-addres=${addr} 2>&1 > /tmp/${short_hostname}_enroll.log
+#ipa host-add ${HOSTNAME} --macaddress=${mac} 2>&1 >> /tmp/${short_hostname}_enroll.log
+#mkdir -p enrolled_keytabs 2>&1 >> /tmp/${short_hostname}_enroll.log
+#ipa-getkeytab -p host/hbc384-citra.home.tickell.us -k enrolled_keytabs/${short_hostname}.keytab 2>&1 >> /tmp/${short_hostname}_enroll.log
+#cat enrolled_keytabs/${short_hostname}.keytab" > ${file}
+#sudo cp -f ${file} /etc/krb5.keytab
+#sudo chmod 640 /etc/krb5.keytab
+#sudo chown root:_keytabusers /etc/krb5.keytab
+
+
+# setup login
+if [ ! -f "/Library/Preferences/com.apple.loginwindow.plist.install" ]; then
+	sudo cp -f /Library/Preferences/com.apple.loginwindow.plist /Library/Preferences/com.apple.loginwindow.plist.install
+fi
+/usr/libexec/PlistBuddy -c print /Library/Preferences/com.apple.loginwindow.plist
+sudo /usr/libexec/PlistBuddy -c 'Add:SHOWFULLNAME bool' /Library/Preferences/com.apple.loginwindow.plist
+sudo /usr/libexec/PlistBuddy -c 'Set:SHOWFULLNAME true' /Library/Preferences/com.apple.loginwindow.plist
+/usr/libexec/PlistBuddy -c print /Library/Preferences/com.apple.loginwindow.plist
+
