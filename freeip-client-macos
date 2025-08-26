@@ -108,9 +108,9 @@ END
 if [ ! -f /etc/pam.d/authorization.install ]; then
 	sudo cp /etc/pam.d/authorization /etc/pam.d/authorization.install
 fi
-#sudo cp /etc/pam.d/authorization /etc/pam.d/authorization.orig
-#sudo cp ${file} /etc/pam.d/authorization
-#sudo chmod 644 /etc/pam.d/authorization
+sudo cp /etc/pam.d/authorization /etc/pam.d/authorization.orig
+sudo cp ${file} /etc/pam.d/authorization
+sudo chmod 644 /etc/pam.d/authorization
 
 cat > ${file} << END
 auth       optional       pam_krb5.so use_first_pass use_kcminit
@@ -125,9 +125,9 @@ END
 if [ ! -f /etc/pam.d/screensaver.install ]; then
         sudo cp /etc/pam.d/screensaver /etc/pam.d/screensaver.install
 fi
-#sudo cp /etc/pam.d/screensaver /etc/pam.d/screensaver.orig
-#sudo cp ${file} /etc/pam.d/screensaver
-#sudo chmod 644 /etc/pam.d/screensaver
+sudo cp /etc/pam.d/screensaver /etc/pam.d/screensaver.orig
+sudo cp ${file} /etc/pam.d/screensaver
+sudo chmod 644 /etc/pam.d/screensaver
 
 cat > ${file} << END
 password   sufficient     pam_krb5.so
@@ -139,9 +139,9 @@ END
 if [ ! -f /etc/pam.d/passwd.install ]; then
         sudo cp /etc/pam.d/passwd /etc/pam.d/passwd.install
 fi
-#sudo cp /etc/pam.d/passwd /etc/pam.d/passwd.orig
-#sudo cp ${file} /etc/pam.d/passwd
-#sudo chmod 644 /etc/pam.d/passwd
+sudo cp /etc/pam.d/passwd /etc/pam.d/passwd.orig
+sudo cp ${file} /etc/pam.d/passwd
+sudo chmod 644 /etc/pam.d/passwd
 
 # update ssh client config
 echo "Update SSH client Configuration"
