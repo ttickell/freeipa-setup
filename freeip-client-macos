@@ -3,6 +3,9 @@
 ORG_CA_ROOT=""
 REALM="HOME.TICKELL.US"
 DOMAIN="home.tickell.us"
+BASE=$(echo "dc=${DOMAIN}" | sed -e 's/\./,dc=/g')
+echo $BASE
+
 [ -z "$ADMIN" ] && ADMIN="admin@$REALM"
 file=$(mktemp)
 
@@ -51,15 +54,13 @@ fi
 
 sudo security add-trusted-cert -d -r trustRoot -k "/Library/Keychains/System.keychain" -p ssl -p smime -p codeSign -p IPSec -p basic -p swUpdate -p pkgSign -p eap  -p macappstore -p appleID -p timestamping ${ORG_CA_ROOT} 
 
-## BEGIN False
-## if false; then
-
 echo "Getting FreeIPA CA Cert"
 curl -kL http://ipa-ca.${DOMAIN}/ipa/config/ca.crt > ${file} 2>/dev/null
 sudo mkdir -p /etc/ipa
 sudo cp ${file} /etc/ipa/ca.crt
 sudo chmod 755 /etc/ipa
 sudo chmod 644 /etc/ipa/ca.crt
+
 
 
 echo "Create /etc/krb5.conf"
@@ -154,9 +155,6 @@ sudo cp /etc/ssh/ssh_config /etc/ssh/ssh_config.orig
 sudo cp ${file} /etc/ssh/ssh_config
 sudo chmod 644 /etc/ssh/ssh_config
 
-# END FALSE
-# fi
-
 # Checking (and setting if needed) hostname
 echo "Checking / Setting hostname"
 set_name=0
@@ -231,8 +229,28 @@ short_hostname=$(hostname -s)
 if [ ! -f "/Library/Preferences/com.apple.loginwindow.plist.install" ]; then
 	sudo cp -f /Library/Preferences/com.apple.loginwindow.plist /Library/Preferences/com.apple.loginwindow.plist.install
 fi
-/usr/libexec/PlistBuddy -c print /Library/Preferences/com.apple.loginwindow.plist
+#/usr/libexec/PlistBuddy -c print /Library/Preferences/com.apple.loginwindow.plist
 sudo /usr/libexec/PlistBuddy -c 'Add:SHOWFULLNAME bool' /Library/Preferences/com.apple.loginwindow.plist
 sudo /usr/libexec/PlistBuddy -c 'Set:SHOWFULLNAME true' /Library/Preferences/com.apple.loginwindow.plist
-/usr/libexec/PlistBuddy -c print /Library/Preferences/com.apple.loginwindow.plist
+#/usr/libexec/PlistBuddy -c print /Library/Preferences/com.apple.loginwindow.plist
+
+# Setting Mapping Template
+cp FreeIPA.plist ~/Library/Application\ Support/Directory\ Access/LDAPv3/Templates/FreeIPA.plist
+echo "NOTE: You now must set the ldap servers and mappings in Directory Access."
+echo "Return here and type 'complete' when you are done."
+open "/System/Library/CoreServices/Applications/Directory Utility.app"
+read foo
+
+echo "Resuming and setting up Mobile Accounts for listed Users"
+server=$(dig _kerberos-master._tcp.${DOMAIN}. SRV +short | head -1 | awk '{print $4}' | sed -e 's/\.$//')
+for user in $(dscl /LDAPv3/${server} list Users); do
+	echo " -- Working on $user"
+	if [ -d "/Users/${user}" ]; then
+		echo " -- ${user} already a mobile user or existing local user - migrate by hand."
+	else 
+		sudo /System/Library/CoreServices/ManagedClient.app/Contents/Resources/createmobileaccount -n ${user}
+	
+	fi
+done	
+
 
