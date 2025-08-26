@@ -1,5 +1,6 @@
 #!/bin/zsh
 
+ORG_CA_ROOT=""
 REALM="HOME.TICKELL.US"
 DOMAIN="home.tickell.us"
 [ -z "$ADMIN" ] && ADMIN="admin@$REALM"
@@ -21,11 +22,39 @@ if [ "$test" != "$ADMIN" ]; then
 	fi
 fi
 
+## Add Org CA Trust
+echo "Adding your CA to the System Trust Store"
+echo
+echo "********    You will get prompted to authorize the security change! *********"
+echo 
+if [ -z "${ORG_CA_ROOT}" ]; then
+	cat > ${file} << END
+-----BEGIN CERTIFICATE-----
+MIICizCCAe2gAwIBAgIUU0jAFYRCBir4np1dJ6x/IfmcsX0wCgYIKoZIzj0EAwQw
+LTErMCkGA1UEAwwidGlja2VsbCB7ZG90fSB1cyBSb290IG9mIGFsbCBUcnVzdDAe
+Fw0yNDA0MDYwMTM2MjRaFw0zNDA0MDQwMTM2MjRaMC0xKzApBgNVBAMMInRpY2tl
+bGwge2RvdH0gdXMgUm9vdCBvZiBhbGwgVHJ1c3QwgZswEAYHKoZIzj0CAQYFK4EE
+ACMDgYYABAEdCnLCA0gwEm23Ua+YdEnGrkBVo62JDIB0ce3S4uJxTMt88EcCtNj3
+xeXOQApKrjXNm1YUAVddAVO319CS+bEx8AAS94h+KghJAuwae6X7gOAGxABO3eza
+70B0Jww9aJOj2T0gROO9DZf7yodk2eP3LfUm7XmOCL0yS53AtMsodNVvy6OBpzCB
+pDAMBgNVHRMEBTADAQH/MB0GA1UdDgQWBBRE2noj3ZAagpikK3a6QfNnfwwVuDBo
+BgNVHSMEYTBfgBRE2noj3ZAagpikK3a6QfNnfwwVuKExpC8wLTErMCkGA1UEAwwi
+dGlja2VsbCB7ZG90fSB1cyBSb290IG9mIGFsbCBUcnVzdIIUU0jAFYRCBir4np1d
+J6x/IfmcsX0wCwYDVR0PBAQDAgEGMAoGCCqGSM49BAMEA4GLADCBhwJBP7l/1tqv
+xWKRWITP442AC249Zvo6qelUimryLRfrjrU2AJ5OfChxxJ0RAJDC2qI/qJt5z6HL
+M2boEYoy70QYhFsCQgDvmxHk89OAVUwrHtp6+mglMG59L16yYHhCqGDCCPDXFE/3
+E8FoSiasbUI7A3xI4glvKbho+jnoIKBlM5ALbMSk7A==
+-----END CERTIFICATE-----
+END
+	ORG_CA_ROOT=${file}	
+fi
+
+sudo security add-trusted-cert -d -r trustRoot -k "/Library/Keychains/System.keychain" -p ssl -p smime -p codeSign -p IPSec -p basic -p swUpdate -p pkgSign -p eap  -p macappstore -p appleID -p timestamping ${ORG_CA_ROOT} 
 
 ## BEGIN False
 ## if false; then
 
-echo "Getting CA Cert"
+echo "Getting FreeIPA CA Cert"
 curl -kL http://ipa-ca.${DOMAIN}/ipa/config/ca.crt > ${file} 2>/dev/null
 sudo mkdir -p /etc/ipa
 sudo cp ${file} /etc/ipa/ca.crt
