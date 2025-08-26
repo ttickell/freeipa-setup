@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Attribute Type Map</key>
+	<array/>
+	<key>Record Type Map</key>
+	<array>
+		<dict>
+			<key>Attribute Type Map</key>
+			<array>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>#/Users/$uid$</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:NFSHomeDirectory</string>
+				</dict>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>uid</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:RecordName</string>
+				</dict>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>#/Users/$uid$</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:HomeDirectory</string>
+				</dict>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>cn</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:RealName</string>
+				</dict>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>gidNumber</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:PrimaryGroupID</string>
+				</dict>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>uidNumber</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:UniqueID</string>
+				</dict>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>#/bin/zsh</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:UserShell</string>
+				</dict>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>uid</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:AuthenticationAuthority</string>
+				</dict>
+			</array>
+			<key>Native Map</key>
+			<array>
+				<dict>
+					<key>Group Object Classes</key>
+					<string>OR</string>
+					<key>Object Classes</key>
+					<array>
+						<string>inetOrgPerson</string>
+					</array>
+					<key>Search Base</key>
+					<string>%!</string>
+				</dict>
+			</array>
+			<key>Standard Name</key>
+			<string>dsRecTypeStandard:Users</string>
+		</dict>
+		<dict>
+			<key>Attribute Type Map</key>
+			<array>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>cn</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:RecordName</string>
+				</dict>
+				<dict>
+					<key>Native Map</key>
+					<array>
+						<string>gidNumber</string>
+					</array>
+					<key>Standard Name</key>
+					<string>dsAttrTypeStandard:PrimaryGroupID</string>
+				</dict>
+			</array>
+			<key>Native Map</key>
+			<array>
+				<dict>
+					<key>Group Object Classes</key>
+					<string>OR</string>
+					<key>Object Classes</key>
+					<array>
+						<string>posixgroup</string>
+					</array>
+					<key>Search Base</key>
+					<string>%!</string>
+				</dict>
+			</array>
+			<key>Standard Name</key>
+			<string>dsRecTypeStandard:Groups</string>
+		</dict>
+	</array>
+</dict>
+</plist>
